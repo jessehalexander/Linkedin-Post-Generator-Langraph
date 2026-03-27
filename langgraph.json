@@ -1,0 +1,8 @@
+{
+  "dependencies": ["."],
+  "graphs": {
+    "linkedin_post_generator": "./src/graph.py:linkedin_graph",
+    "topic_suggester": "./src/topic_graph.py:topic_graph"
+  },
+  "env": ".env"
+}
