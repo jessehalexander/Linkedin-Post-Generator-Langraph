@@ -1,6 +1,7 @@
+import json
 from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import SystemMessage, HumanMessage
-from .state import PostState
+from .state import PostState, TopicSuggestionState
 
 llm = ChatAnthropic(model="claude-sonnet-4-6", temperature=0.7)
 
@@ -174,4 +175,56 @@ Add hashtags, emojis, and finalize the formatting. Return only the final post.""
     return {
         "final_post": response.content,
         "messages": [{"role": "formatter_agent", "content": response.content}]
+    }
+
+
+def topic_suggester_agent(state: TopicSuggestionState) -> dict:
+    """Generate 8 LinkedIn post topic suggestions based on user context."""
+    interests_str = ", ".join(state["interests"]) if state["interests"] else "not specified"
+    recent = state.get("recent_experience", "").strip() or "nothing specific"
+
+    system = SystemMessage(content="""You are a LinkedIn content strategist who helps professionals find compelling post topics.
+Generate exactly 8 topic suggestions tailored to the user's background.
+
+For each topic provide:
+- title: A short, punchy topic title (max 10 words)
+- description: Why this topic will resonate with their audience (1-2 sentences)
+- angle: A specific angle or hook to make it stand out (1 sentence)
+
+You MUST respond with valid JSON only — no markdown, no explanation, just a JSON array like:
+[
+  {"title": "...", "description": "...", "angle": "..."},
+  ...
+]""")
+
+    human = HumanMessage(content=f"""Generate 8 LinkedIn post topic suggestions for this professional:
+
+Industry: {state['industry']}
+Role: {state['role']}
+Interests / Expertise Areas: {interests_str}
+Recent Experience / Context: {recent}
+
+Return only the JSON array of 8 topic suggestions.""")
+
+    response = llm.invoke([system, human])
+
+    # Parse JSON topics
+    try:
+        topics = json.loads(response.content)
+    except (json.JSONDecodeError, ValueError):
+        # Fallback: extract JSON array from response if wrapped in extra text
+        content = response.content
+        start = content.find("[")
+        end = content.rfind("]") + 1
+        if start != -1 and end > start:
+            try:
+                topics = json.loads(content[start:end])
+            except (json.JSONDecodeError, ValueError):
+                topics = [{"title": response.content, "description": "", "angle": ""}]
+        else:
+            topics = [{"title": response.content, "description": "", "angle": ""}]
+
+    return {
+        "suggested_topics": topics,
+        "messages": [{"role": "topic_suggester_agent", "content": str(topics)}]
     }

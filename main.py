@@ -4,6 +4,7 @@
 import os
 from dotenv import load_dotenv
 from src.graph import linkedin_graph
+from src.topic_graph import topic_graph
 
 load_dotenv()
 
@@ -71,14 +72,101 @@ def generate_post(
     return final_state["final_post"]
 
 
+def suggest_topics(
+    industry: str,
+    role: str,
+    interests: list[str] = None,
+    recent_experience: str = ""
+) -> list[dict]:
+    """Generate LinkedIn post topic suggestions based on user context.
+
+    Args:
+        industry: User's industry (e.g. "Software Engineering", "Marketing")
+        role: User's current role (e.g. "Senior Engineer", "Product Manager")
+        interests: List of expertise areas or interests
+        recent_experience: Optional context like "just led a product launch"
+
+    Returns:
+        List of dicts with keys: title, description, angle
+    """
+    if interests is None:
+        interests = []
+
+    initial_state = {
+        "industry": industry,
+        "role": role,
+        "interests": interests,
+        "recent_experience": recent_experience,
+        "suggested_topics": [],
+        "messages": []
+    }
+
+    final_state = topic_graph.invoke(initial_state)
+    return final_state["suggested_topics"]
+
+
+def _print_topic_suggestions(topics: list[dict]) -> None:
+    """Print numbered topic suggestions to the console."""
+    print("\n" + "="*60)
+    print("SUGGESTED LINKEDIN POST TOPICS:")
+    print("="*60)
+    for i, topic in enumerate(topics, 1):
+        print(f"\n{i}. {topic.get('title', 'N/A')}")
+        if topic.get("description"):
+            print(f"   {topic['description']}")
+        if topic.get("angle"):
+            print(f"   Angle: {topic['angle']}")
+    print("\n" + "="*60)
+
+
 def main():
     """Interactive CLI for the LinkedIn Post Generator."""
     print("\n" + "="*60)
     print("  LinkedIn Post Generator powered by LangGraph + Claude")
     print("="*60 + "\n")
+    print("What would you like to do?")
+    print("  1. Suggest topics for me")
+    print("  2. I already have a topic")
+    choice = input("\nEnter choice [1/2]: ").strip() or "2"
 
-    # Get user input
-    topic = input("Enter your post topic or idea: ").strip()
+    topic = ""
+
+    if choice == "1":
+        print("\n--- Topic Suggester ---")
+        industry = input("Your industry (e.g. Software, Marketing, Finance): ").strip() or "Technology"
+        role = input("Your role (e.g. Software Engineer, Product Manager): ").strip() or "Professional"
+        print("Your interests/expertise areas (separated by '|', or press Enter to skip): ")
+        interests_input = input().strip()
+        interests = [i.strip() for i in interests_input.split("|") if i.strip()] if interests_input else []
+        print("Any recent experience or context? (press Enter to skip): ")
+        recent_experience = input().strip()
+
+        print("\nGenerating topic suggestions...")
+        topics = suggest_topics(
+            industry=industry,
+            role=role,
+            interests=interests,
+            recent_experience=recent_experience
+        )
+        _print_topic_suggestions(topics)
+
+        print("Enter a number to select a topic, or type your own topic: ")
+        selection = input().strip()
+
+        if selection.isdigit():
+            idx = int(selection) - 1
+            if 0 <= idx < len(topics):
+                topic = topics[idx]["title"]
+                print(f"\nSelected: {topic}")
+            else:
+                print("Invalid selection, please enter your own topic.")
+                topic = input("Topic: ").strip()
+        else:
+            topic = selection
+
+    else:
+        topic = input("Enter your post topic or idea: ").strip()
+
     if not topic:
         print("Error: Topic cannot be empty.")
         return
