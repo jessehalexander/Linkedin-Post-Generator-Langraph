@@ -17,9 +17,10 @@ class TopicSuggestionState(TypedDict):
 class PostState(TypedDict):
     # Input
     topic: str
-    tone: str  # e.g. "professional", "casual", "inspirational", "educational"
+    tone: str  # e.g. "professional", "casual", "inspirational", "educational", "thought_leadership"
     target_audience: str
     key_points: list[str]
+    opinion_angle: str  # the author's specific take or opinion on the topic (optional)
 
     # Agent outputs
     research: str

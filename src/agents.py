@@ -16,13 +16,15 @@ Your job is to analyze a topic and provide:
 - Potential angles or perspectives to explore
 Keep your research concise and actionable (200-300 words).""")
 
+    opinion = state.get("opinion_angle", "").strip()
     human = HumanMessage(content=f"""Research this LinkedIn post topic:
 Topic: {state['topic']}
 Target Audience: {state['target_audience']}
 Tone: {state['tone']}
 Key Points to Cover: {', '.join(state['key_points']) if state['key_points'] else 'None specified'}
+Author's Opinion / Angle: {opinion if opinion else 'Not specified'}
 
-Provide research insights that will help create a compelling LinkedIn post.""")
+Provide research insights that will help create a compelling LinkedIn post. If the author has shared an opinion angle, find facts, examples, or counterpoints that support or enrich that perspective.""")
 
     response = llm.invoke([system, human])
     return {
